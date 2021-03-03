@@ -18,7 +18,7 @@ import "./CRLToken.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChefV2 is Ownable, ReentrancyGuard {
+contract MasterChef is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeBEP20 for IBEP20;
 
@@ -68,12 +68,16 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
     // The block number when CRL mining starts.
     uint256 public startBlock;
 
+    // Used for restake function
+    uint256 public stakePoolId = 0;
+
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event SetFeeAddress(address indexed user, address indexed newAddress);
     event SetDevAddress(address indexed user, address indexed newAddress);
-    event UpdateEmissionRate(address indexed user, uint256 goosePerBlock);
+    event UpdateEmissionRate(address indexed user, uint256 crlPerBlock);
+    event RewardPaid(address indexed user, uint256 reward);
 
     constructor(
         CRLToken _crl,
@@ -197,6 +201,29 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
         }
         user.rewardDebt = user.amount.mul(pool.accCrlPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
+    }
+
+    // user can choose autoStake reward to stake pool instead just harvest
+    function stakeReward(uint256 _pid) public {
+        require(_pid!=stakePoolId);
+
+        UserInfo storage user = userInfo[_pid][msg.sender];
+
+        if (user.amount > 0) {
+            PoolInfo storage pool = poolInfo[_pid];
+
+            updatePool(_pid);
+
+            uint256 pending = user.amount.mul(pool.accCrlPerShare).div(1e12).sub(user.rewardDebt);
+            if(pending > 0) {
+                safeCrlTransfer(msg.sender, pending);
+                emit RewardPaid(msg.sender, pending);
+
+                deposit(stakePoolId, pending);
+            }
+            user.rewardDebt = user.amount.mul(pool.accCrlPerShare).div(1e12);
+        }
+
     }
 
     // Withdraw LP tokens from MasterChef.

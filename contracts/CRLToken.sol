@@ -2,8 +2,10 @@ pragma solidity 0.6.12;
 
 import "./libs/BEP20.sol";
 
-// CRLToken with Governance.
+// CoralFarm Token
 // https://coralfarm.finance
+// https://t.me/CoralFarm
+
 contract CRLToken is BEP20('CoralFarm Token', 'CRL') {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
